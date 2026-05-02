@@ -34,12 +34,14 @@ export function detectLowOutputTurns(session: Session): Finding[] {
     if (inp < 5000) continue;
     if (out >= 50) continue;
     if (turn.toolUses.length > 0) continue;
+    const novel =
+      (turn.usage.input_tokens ?? 0) + (turn.usage.cache_creation_input_tokens ?? 0);
     findings.push({
       detector: "low-output-turn",
       severity: "info",
       title: `Turn ${turn.index}: ${inp.toLocaleString()} tokens in, ${out} out, no action`,
       detail: `Heavy context loaded but the assistant produced almost nothing actionable. Often a sign of an unclear prompt or premature thinking.`,
-      wastedTokens: inp,
+      wastedTokens: novel,
       turnIndices: [turn.index],
     });
   }
