@@ -23,75 +23,195 @@ Prompt Graveyard answers those questions. It's a diagnostic, not a meter.
 
 ## Install
 
-```bash
-# from npm (recommended)
-npm install -g prompt-graveyard
-
-# or from source
-git clone https://github.com/<your-handle>/prompt-graveyard
-cd prompt-graveyard
-npm install
-npm run build
-npm link
-```
+> Not yet published to npm. For now, install from source.
 
 Requires Node.js 18+.
 
----
-
-## Usage
-
-### Analyze the latest session in your current project
-
 ```bash
-cd /path/to/your/project
-prompt-graveyard
+git clone https://github.com/<your-handle>/prompt-graveyard
+cd prompt-graveyard
+npm install         # install dependencies (one time)
+npm run build       # compile TypeScript → JavaScript (re-run after any code change)
 ```
 
-### Generate a self-contained HTML report
+After `npm run build` succeeds, a `dist/` folder is created with the compiled JavaScript that the CLI runs.
+
+---
+
+## Quick test
+
+To make sure everything is working, run this from inside the repo:
 
 ```bash
-prompt-graveyard --html ./report.html
+node bin/prompt-graveyard.js sweep -n 5
+```
+
+It will scan **all** Claude Code sessions on your machine and print the 5 worst ones. If you see a table with project names and scores, the install is good.
+
+---
+
+## How to run it — three ways
+
+### 1. Terminal report for the latest session in a project
+
+This is the most common case. Point the CLI at any project directory and it analyzes its most recent Claude Code session.
+
+```bash
+node bin/prompt-graveyard.js --cwd /path/to/your/project
+```
+
+You'll see something like:
+
+```
+💀 Prompt Graveyard
+────────────────────────────────────────────────────────────
+Session    8017d76d-ef6e-4b4d-8529-6b11c1297518
+Project    /path/to/your/project
+Branch     main
+Turns      3
+Started    2026-05-02T18:47:12.019Z
+
+┌──────────────────┬────────┐
+│ Token type       │  Count │
+├──────────────────┼────────┤
+│ Input (uncached) │     12 │
+│ Cache creation   │ 20,766 │
+│ Cache read       │ 29,658 │
+│ Output           │  1,816 │
+│ Total            │ 52,252 │
+└──────────────────┴────────┘
+
+Waste score 0/100  (higher = more tokens likely wasted)
+
+No waste patterns detected. 🎉
+```
+
+If the session does have waste, you'll see findings grouped by detector (`duplicate-reads`, `duplicate-bash`, `ghost-read`, `token-spike`, `low-output-turn`).
+
+### 2. HTML report (recommended for deep dives)
+
+```bash
+node bin/prompt-graveyard.js --cwd /path/to/your/project --html ./report.html
 open ./report.html
 ```
 
-The HTML report includes:
+The HTML report opens in your browser with a dark-themed dashboard:
+
+- A big color-coded waste score badge (green / yellow / red)
 - Token breakdown table
-- Color-coded waste score
-- Per-turn stacked-bar timeline (flagged turns ringed in red)
+- **Per-turn timeline chart** — every turn is a stacked bar (cache read = grey, cache create = orange, input = blue, output = green); flagged turns are ringed in red
 - All findings grouped by detector with severity badges
 
-### Sweep — rank the worst sessions across **all** your projects
+The HTML file is fully self-contained (no external CSS/JS, no network) so you can email it, commit it, or open it offline.
+
+### 3. Sweep — rank the worst sessions across **all** your projects
 
 ```bash
-prompt-graveyard sweep            # top 20
-prompt-graveyard sweep -n 50      # top 50
-prompt-graveyard sweep --json     # raw JSON
+node bin/prompt-graveyard.js sweep -n 10
 ```
 
-### List recent sessions for a project
+It scans every Claude Code session under `~/.claude/projects/` and prints a leaderboard of the worst offenders:
+
+```
+💀 Prompt Graveyard — Sweep
+Worst sessions across all projects (10 shown)
+┌───┬───────┬───────┬───────────┬───────────────────────┬───────────────────────────────────┐
+│ # │ Score │ Turns │  Billable │ Project               │ Top finding                       │
+├───┼───────┼───────┼───────────┼───────────────────────┼───────────────────────────────────┤
+│ 1 │   100 │ 1,038 │ 3,195,235 │ StudioIQ-Frontend     │ Turn 1011: 318k in, 2 out         │
+│ 2 │   100 │   551 │ 1,833,304 │ web-vitals-checker    │ Cache rebuild: 217k tokens        │
+│ 3 │    70 │   102 │   691,533 │ StudioIQ-Frontend     │ Cache rebuild: 115k tokens        │
+└───┴───────┴───────┴───────────┴───────────────────────┴───────────────────────────────────┘
+```
+
+Useful as a starting point: pick the worst row, then run the HTML report on that specific session.
+
+### Other commands
 
 ```bash
-prompt-graveyard list -n 10
+# list all sessions for a project, newest first
+node bin/prompt-graveyard.js list --cwd /path/to/your/project -n 10
+
+# analyze a specific session file directly
+node bin/prompt-graveyard.js ~/.claude/projects/-Users-you-myproject/SESSION_ID.jsonl
+
+# pipe findings to jq for filtering
+node bin/prompt-graveyard.js --cwd /path/to/your/project --json | jq '.findings[] | select(.severity == "high")'
 ```
 
-### Pipe findings to jq
+---
+
+## Make it convenient
+
+Typing `node /full/path/to/bin/prompt-graveyard.js` every time is tedious. Pick one:
+
+### Option A: `npm link` (recommended)
+
+Run this once from inside the repo:
 
 ```bash
-prompt-graveyard --json | jq '.findings[] | select(.severity == "high")'
+npm link
 ```
+
+Now `prompt-graveyard` works as a global command from anywhere:
+
+```bash
+cd /path/to/any/project
+prompt-graveyard                       # latest session
+prompt-graveyard --html report.html    # HTML report
+prompt-graveyard sweep                 # leaderboard across all projects
+prompt-graveyard list                  # this project's sessions
+```
+
+You may be asked for your Mac password the first time — that's normal (npm needs to write a symlink into `/usr/local/bin`).
+
+### Option B: shell alias
+
+If `npm link` gives you trouble, add this line to `~/.zshrc` (or `~/.bashrc`):
+
+```bash
+alias pg='node /Users/mac/Documents/Freelance/prompt-graveyard/bin/prompt-graveyard.js'
+```
+
+Then `source ~/.zshrc` (or restart the terminal). Now:
+
+```bash
+pg sweep
+pg --html report.html
+pg list
+```
+
+---
+
+## After making code changes
+
+Whenever you edit anything under `src/`, re-run the build before testing:
+
+```bash
+npm run build
+```
+
+Or run it in watch mode in a separate terminal:
+
+```bash
+npm run dev
+```
+
+This watches `src/` and rebuilds automatically on every save.
 
 ---
 
 ## What it detects
 
-| Detector | What it flags |
-|----------|---------------|
-| `duplicate-reads` | Same file Read across multiple turns. After the first read it sits in conversation; re-reads bloat context. |
-| `duplicate-bash` | Identical Bash command run more than once. |
-| `token-spike` | A turn that wrote ≥20k cache_creation tokens — the prefix changed enough to invalidate the cache. Frequent rebuilds compound. |
-| `low-output-turn` | Heavy context loaded, almost no output, no tool calls. Often unclear prompts. |
-| `ghost-read` | Tool result was sizeable but its distinctive content barely surfaced in later turns. Likely loaded but unused. |
+
+| Detector          | What it flags                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `duplicate-reads` | Same file Read across multiple turns. After the first read it sits in conversation; re-reads bloat context.                   |
+| `duplicate-bash`  | Identical Bash command run more than once.                                                                                    |
+| `token-spike`     | A turn that wrote ≥20k cache_creation tokens — the prefix changed enough to invalidate the cache. Frequent rebuilds compound. |
+| `low-output-turn` | Heavy context loaded, almost no output, no tool calls. Often unclear prompts.                                                 |
+| `ghost-read`      | Tool result was sizeable but its distinctive content barely surfaced in later turns. Likely loaded but unused.                |
+
 
 ---
 
