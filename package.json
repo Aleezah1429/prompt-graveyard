@@ -1,6 +1,6 @@
 {
   "name": "prompt-graveyard",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Postmortem analysis for Claude Code sessions — find which prompts wasted tokens, which file reads were redundant, where context bloated.",
   "bin": {
     "prompt-graveyard": "./bin/prompt-graveyard.js"
@@ -10,7 +10,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node bin/prompt-graveyard.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
     "claude",
@@ -20,6 +21,14 @@
     "analysis",
     "postmortem"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aleezah1429/prompt-graveyard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Aleezah1429/prompt-graveyard/issues"
+  },
+  "homepage": "https://github.com/Aleezah1429/prompt-graveyard#readme",
   "license": "MIT",
   "engines": {
     "node": ">=18"

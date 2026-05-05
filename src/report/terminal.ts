@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import Table from "cli-table3";
 import type { Report, Finding } from "../types.js";
+import { formatUsd } from "../pricing.js";
 
 function fmt(n: number): string {
   return n.toLocaleString();
@@ -19,7 +20,7 @@ function scoreColor(score: number): (x: string) => string {
 }
 
 export function renderReport(report: Report): string {
-  const { session, findings, wasteScore } = report;
+  const { session, findings, wasteScore, wastedCostUsd } = report;
   const lines: string[] = [];
 
   lines.push(chalk.bold.magenta("\n💀 Prompt Graveyard"));
@@ -27,6 +28,9 @@ export function renderReport(report: Report): string {
   lines.push(`${chalk.bold("Session")}    ${session.sessionId}`);
   lines.push(`${chalk.bold("Project")}    ${session.cwd}`);
   if (session.gitBranch) lines.push(`${chalk.bold("Branch")}     ${session.gitBranch}`);
+  if (session.models.length > 0) {
+    lines.push(`${chalk.bold("Models")}     ${session.models.join(", ")}`);
+  }
   lines.push(`${chalk.bold("Turns")}      ${session.turns.length}`);
   lines.push(`${chalk.bold("Started")}    ${session.startedAt}`);
   lines.push("");
@@ -44,8 +48,13 @@ export function renderReport(report: Report): string {
   lines.push("");
 
   lines.push(
+    `${chalk.bold("API cost")}    ${chalk.cyan(formatUsd(session.totals.costUsd))}  ${chalk.gray(
+      "(at public pay-as-you-go rates; Pro/Max subs absorb this)"
+    )}`
+  );
+  lines.push(
     `${chalk.bold("Waste score")} ${scoreColor(wasteScore)(`${wasteScore}/100`)}  ${chalk.gray(
-      "(higher = more tokens likely wasted)"
+      `~${formatUsd(wastedCostUsd)} of API-equivalent cost likely wasted`
     )}`
   );
   lines.push("");

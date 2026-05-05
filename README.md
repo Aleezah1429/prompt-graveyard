@@ -2,7 +2,7 @@
 
 **Postmortem analysis for Claude Code sessions.**
 
-Token trackers tell you *how much* you spent. Prompt Graveyard tells you *what was wasted* — duplicate file reads, repeated shell commands, cache rebuilds, and "ghost reads" (content loaded but never used).
+Token trackers tell you *how much* you spent. Prompt Graveyard tells you *what was wasted* — duplicate file reads, repeated shell commands, cache rebuilds, and "ghost reads" (content loaded but never used) — and estimates the **dollar cost** of that waste using Anthropic's public pricing.
 
 100% local. No API calls. No upload. Reads `~/.claude/projects/*/[session].jsonl` directly.
 
@@ -16,6 +16,7 @@ There are great tools for tracking **how much** you spend on Claude Code (`ccusa
 - Which prompt produced 38k tokens of context but zero output?
 - When did the prompt cache invalidate, and why?
 - Which tool result was loaded but never actually used?
+- How many **dollars** of that session were spent on waste?
 
 Prompt Graveyard answers those questions. It's a diagnostic, not a meter.
 
@@ -23,12 +24,10 @@ Prompt Graveyard answers those questions. It's a diagnostic, not a meter.
 
 ## Install
 
-> Not yet published to npm. For now, install from source.
-
 Requires Node.js 18+.
 
 ```bash
-git clone https://github.com/<your-handle>/prompt-graveyard
+git clone https://github.com/Aleezah1429/prompt-graveyard
 cd prompt-graveyard
 npm install         # install dependencies (one time)
 npm run build       # compile TypeScript → JavaScript (re-run after any code change)
@@ -81,7 +80,8 @@ Started    2026-05-02T18:47:12.019Z
 │ Total            │ 52,252 │
 └──────────────────┴────────┘
 
-Waste score 0/100  (higher = more tokens likely wasted)
+Est. cost  $1.24  (based on Anthropic public pricing)
+Waste score 0/100  ~$0.00 likely wasted
 
 No waste patterns detected. 🎉
 ```
@@ -170,7 +170,7 @@ You may be asked for your Mac password the first time — that's normal (npm nee
 If `npm link` gives you trouble, add this line to `~/.zshrc` (or `~/.bashrc`):
 
 ```bash
-alias pg='node /Users/mac/Documents/Freelance/prompt-graveyard/bin/prompt-graveyard.js'
+alias pg='node /absolute/path/to/prompt-graveyard/bin/prompt-graveyard.js'
 ```
 
 Then `source ~/.zshrc` (or restart the terminal). Now:
@@ -215,6 +215,16 @@ This watches `src/` and rebuilds automatically on every save.
 
 ---
 
+## Cost estimation
+
+> **Heads up.** The dollar figures are **API-equivalent cost** — what the session would have cost on Anthropic's public pay-as-you-go API. If you're on a Claude Code **Pro / Max subscription**, your actual out-of-pocket is the flat monthly fee; the subscription absorbs all of this. So a $69 "wasted" number does **not** mean you were charged $69 — it means an equivalent API run would have, and a session that big is eating into your subscription's rate-limit allowance.
+
+Each session is priced against Anthropic's public per-model rates (Opus / Sonnet / Haiku, with cache-write at 1.25× input and cache-read at 0.1× input). The model is read straight from the transcript, so a session that mixed Opus + Sonnet costs the right thing for each turn.
+
+The `~$X likely wasted` figure under the waste score is an estimate: each finding's `wastedTokens` priced at the relevant turn's cache-write rate (most waste is cache rebuild). It's a lower-bound for napkin math, not an invoice.
+
+---
+
 ## Waste score
 
 A 0–100 number: `wasted tokens / billable tokens`, where billable = `input + cache_creation + output` (cache reads are excluded since they're ~10× cheaper).
@@ -247,7 +257,8 @@ Started    2026-04-26T13:27:28.752Z
 │ Total            │ 37,416,240 │
 └──────────────────┴────────────┘
 
-Waste score 56/100  (higher = more tokens likely wasted)
+Est. cost  $106.34  (based on Anthropic public pricing)
+Waste score 56/100  ~$19.10 likely wasted
 
 ▸ duplicate-reads  (2)
   [HIGH] Read 3× redundantly: /Users/me/.../components/HabitCard.tsx

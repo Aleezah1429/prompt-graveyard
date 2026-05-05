@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Session, Turn, ToolUse, ToolResult, RawUsage } from "./types.js";
+import { pricingForModel, costForUsage } from "./pricing.js";
 
 interface RawRecord {
   type: string;
@@ -12,6 +13,7 @@ interface RawRecord {
     role?: string;
     content?: unknown;
     usage?: RawUsage;
+    model?: string;
   };
 }
 
@@ -114,6 +116,7 @@ export function parseSession(filePath: string): Session {
       text: extractText(content),
       thinking: extractThinking(content),
       usage: rec.message.usage,
+      model: rec.message.model,
       toolUses: extractToolUses(content, turnIndex, rec.timestamp ?? ""),
       toolResults: extractToolResults(content, turnIndex),
     };
@@ -128,13 +131,27 @@ export function parseSession(filePath: string): Session {
         acc.cacheCreationTokens += u.cache_creation_input_tokens ?? 0;
         acc.cacheReadTokens += u.cache_read_input_tokens ?? 0;
         acc.outputTokens += u.output_tokens ?? 0;
+        acc.costUsd += costForUsage(u, pricingForModel(t.model));
       }
       return acc;
     },
-    { inputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, outputTokens: 0, grandTotal: 0 }
+    {
+      inputTokens: 0,
+      cacheCreationTokens: 0,
+      cacheReadTokens: 0,
+      outputTokens: 0,
+      grandTotal: 0,
+      costUsd: 0,
+    }
   );
   totals.grandTotal =
     totals.inputTokens + totals.cacheCreationTokens + totals.cacheReadTokens + totals.outputTokens;
 
-  return { sessionId, cwd, gitBranch, startedAt, endedAt, turns, totals };
+  const modelSet = new Set<string>();
+  for (const t of turns) {
+    if (t.model && t.model !== "<synthetic>") modelSet.add(t.model);
+  }
+  const models = [...modelSet];
+
+  return { sessionId, cwd, gitBranch, startedAt, endedAt, turns, models, totals };
 }

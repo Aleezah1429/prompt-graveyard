@@ -28,6 +28,7 @@ export interface Turn {
   text: string;
   thinking: string;
   usage?: RawUsage;
+  model?: string;
   toolUses: ToolUse[];
   toolResults: ToolResult[];
 }
@@ -39,12 +40,14 @@ export interface Session {
   startedAt: string;
   endedAt: string;
   turns: Turn[];
+  models: string[];
   totals: {
     inputTokens: number;
     cacheCreationTokens: number;
     cacheReadTokens: number;
     outputTokens: number;
     grandTotal: number;
+    costUsd: number;
   };
 }
 
@@ -61,4 +64,5 @@ export interface Report {
   session: Session;
   findings: Finding[];
   wasteScore: number;
+  wastedCostUsd: number;
 }

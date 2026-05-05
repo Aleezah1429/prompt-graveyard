@@ -16,6 +16,8 @@ export interface SweepRow {
   totalTokens: number;
   billableTokens: number;
   wasteScore: number;
+  costUsd: number;
+  wastedCostUsd: number;
   topFinding?: string;
   findingCount: number;
 }
@@ -74,11 +76,13 @@ export function sweep(opts: SweepOptions = {}): SweepRow[] {
       totalTokens: report.session.totals.grandTotal,
       billableTokens: billable,
       wasteScore: report.wasteScore,
+      costUsd: report.session.totals.costUsd,
+      wastedCostUsd: report.wastedCostUsd,
       topFinding: top?.title,
       findingCount: report.findings.length,
     });
   }
 
-  rows.sort((a, b) => b.wasteScore - a.wasteScore || b.billableTokens - a.billableTokens);
+  rows.sort((a, b) => b.wastedCostUsd - a.wastedCostUsd || b.wasteScore - a.wasteScore);
   return opts.limit ? rows.slice(0, opts.limit) : rows;
 }

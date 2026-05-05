@@ -1,4 +1,5 @@
 import type { Report, Finding, Turn } from "../types.js";
+import { formatUsd } from "../pricing.js";
 
 function escape(s: string): string {
   return s
@@ -135,7 +136,7 @@ function scoreClass(score: number): string {
 }
 
 export function renderHtml(report: Report): string {
-  const { session, findings, wasteScore } = report;
+  const { session, findings, wasteScore, wastedCostUsd } = report;
   const totals = session.totals;
 
   return `<!doctype html>
@@ -220,7 +221,7 @@ export function renderHtml(report: Report): string {
       <h1>${"&#x1F480;"} Prompt Graveyard</h1>
       <div class="sub">${escape(session.cwd)} · ${escape(session.gitBranch ?? "")} · ${escape(
     session.sessionId
-  )}</div>
+  )}${session.models.length > 0 ? ` · ${escape(session.models.join(", "))}` : ""}</div>
     </header>
 
     <div class="grid">
@@ -232,12 +233,15 @@ export function renderHtml(report: Report): string {
           <tr><td>Cache read</td><td>${fmt(totals.cacheReadTokens)}</td></tr>
           <tr><td>Output</td><td>${fmt(totals.outputTokens)}</td></tr>
           <tr><td><strong>Total</strong></td><td><strong>${fmt(totals.grandTotal)}</strong></td></tr>
+          <tr><td><strong>API-equivalent cost</strong></td><td><strong>${formatUsd(totals.costUsd)}</strong></td></tr>
         </table>
+        <div class="meta" style="margin-top:8px">at Anthropic's public pay-as-you-go rates. Claude Code Pro/Max subscriptions absorb this — your actual out-of-pocket is the flat sub fee.</div>
       </div>
       <div class="card">
         <h2>Waste score</h2>
         <div class="score ${scoreClass(wasteScore)}">${wasteScore}<span style="font-size:24px;color:var(--muted)">/100</span></div>
         <div class="meta">${session.turns.length} turns · started ${escape(session.startedAt)}</div>
+        <div class="meta" style="margin-top:8px;font-style:normal;color:#f87171">~${formatUsd(wastedCostUsd)} of API-equivalent cost likely wasted</div>
       </div>
     </div>
 
