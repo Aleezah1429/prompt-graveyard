@@ -2,21 +2,25 @@
 
 **Postmortem analysis for Claude Code sessions.**
 
-Token trackers tell you *how much* you spent. Prompt Graveyard tells you *what was wasted* — duplicate file reads, repeated shell commands, cache rebuilds, and "ghost reads" (content loaded but never used) — and estimates the **dollar cost** of that waste using Anthropic's public pricing.
+Token trackers tell you *how much* you spent. Prompt Graveyard tells you *what was wasted* — duplicate file reads, repeated shell commands, cache rebuilds, and "ghost reads" (content loaded but never used) — and estimates the dollar cost of that waste against Anthropic's public pricing.
 
 100% local. No API calls. No upload. Reads `~/.claude/projects/*/[session].jsonl` directly.
+
+[![npm version](https://img.shields.io/npm/v/prompt-graveyard.svg)](https://www.npmjs.com/package/prompt-graveyard)
+[![license](https://img.shields.io/npm/l/prompt-graveyard.svg)](./LICENSE)
+[![node](https://img.shields.io/node/v/prompt-graveyard.svg)](https://nodejs.org)
 
 ---
 
 ## Why this exists
 
-There are great tools for tracking **how much** you spend on Claude Code (`ccusage`, `tokscale`, `claude-usage`, status-line widgets…). None of them tell you **what was wasted**:
+A growing ecosystem of tools tracks **how much** you spend on Claude Code (`ccusage`, `tokscale`, status-line widgets, etc.). None of them tell you **what was wasted**:
 
-- Which file did Claude re-read 4 times?
+- Which file did Claude re-read four times?
 - Which prompt produced 38k tokens of context but zero output?
 - When did the prompt cache invalidate, and why?
 - Which tool result was loaded but never actually used?
-- How many **dollars** of that session were spent on waste?
+- How many dollars of that session went to waste?
 
 Prompt Graveyard answers those questions. It's a diagnostic, not a meter.
 
@@ -26,40 +30,52 @@ Prompt Graveyard answers those questions. It's a diagnostic, not a meter.
 
 Requires Node.js 18+.
 
+### Run without installing (recommended)
+
+```bash
+npx prompt-graveyard sweep -n 5
+```
+
+`npx` downloads the package on the fly and runs it. Nothing is left behind globally.
+
+### Install globally
+
+```bash
+npm install -g prompt-graveyard
+prompt-graveyard sweep -n 5
+```
+
+### From source
+
 ```bash
 git clone https://github.com/Aleezah1429/prompt-graveyard
 cd prompt-graveyard
-npm install         # install dependencies (one time)
-npm run build       # compile TypeScript → JavaScript (re-run after any code change)
-```
-
-After `npm run build` succeeds, a `dist/` folder is created with the compiled JavaScript that the CLI runs.
-
----
-
-## Quick test
-
-To make sure everything is working, run this from inside the repo:
-
-```bash
+npm install
+npm run build
 node bin/prompt-graveyard.js sweep -n 5
 ```
 
-It will scan **all** Claude Code sessions on your machine and print the 5 worst ones. If you see a table with project names and scores, the install is good.
-
 ---
 
-## How to run it — three ways
+## Quick start
 
-### 1. Terminal report for the latest session in a project
+Three commands cover most use cases.
 
-This is the most common case. Point the CLI at any project directory and it analyzes its most recent Claude Code session.
+### 1. Analyze the latest session for a project
+
+Point the CLI at a project directory and it analyzes that project's most recent Claude Code session:
 
 ```bash
-node bin/prompt-graveyard.js --cwd /path/to/your/project
+prompt-graveyard --cwd /path/to/your/project
 ```
 
-You'll see something like:
+Or, if your shell is already in the project directory:
+
+```bash
+prompt-graveyard
+```
+
+Sample output:
 
 ```
 💀 Prompt Graveyard
@@ -67,213 +83,132 @@ You'll see something like:
 Session    8017d76d-ef6e-4b4d-8529-6b11c1297518
 Project    /path/to/your/project
 Branch     main
-Turns      3
-Started    2026-05-02T18:47:12.019Z
+Models     claude-opus-4-7
+Turns      292
+Started    2026-04-26T13:45:30.487Z
 
-┌──────────────────┬────────┐
-│ Token type       │  Count │
-├──────────────────┼────────┤
-│ Input (uncached) │     12 │
-│ Cache creation   │ 20,766 │
-│ Cache read       │ 29,658 │
-│ Output           │  1,816 │
-│ Total            │ 52,252 │
-└──────────────────┴────────┘
+┌──────────────────┬────────────┐
+│ Token type       │      Count │
+├──────────────────┼────────────┤
+│ Input (uncached) │        338 │
+│ Cache creation   │    493,368 │
+│ Cache read       │ 14,308,151 │
+│ Output           │    172,153 │
+│ Total            │ 14,974,010 │
+└──────────────────┴────────────┘
 
-Est. cost  $1.24  (based on Anthropic public pricing)
-Waste score 0/100  ~$0.00 likely wasted
+API cost    $43.63  (at public pay-as-you-go rates; Pro/Max subs absorb this)
+Waste score 25/100  ~$3.14 of API-equivalent cost likely wasted
 
-No waste patterns detected. 🎉
+▸ token-spike  (3)
+  [HIGH] Cache rebuild on turn 116: 55,848 tokens written
+  ...
 ```
 
-If the session does have waste, you'll see findings grouped by detector (`duplicate-reads`, `duplicate-bash`, `ghost-read`, `token-spike`, `low-output-turn`).
+Sessions with detected waste show findings grouped by detector (`duplicate-reads`, `duplicate-bash`, `ghost-read`, `token-spike`, `low-output-turn`).
 
-### 2. HTML report (recommended for deep dives)
+### 2. Generate an HTML report
 
 ```bash
-node bin/prompt-graveyard.js --cwd /path/to/your/project --html ./report.html
+prompt-graveyard --cwd /path/to/your/project --html ./report.html
 open ./report.html
 ```
 
-The HTML report opens in your browser with a dark-themed dashboard:
+The HTML report is a self-contained, dark-themed dashboard:
 
-- A big color-coded waste score badge (green / yellow / red)
-- Token breakdown table
-- **Per-turn timeline chart** — every turn is a stacked bar (cache read = grey, cache create = orange, input = blue, output = green); flagged turns are ringed in red
+- A color-coded waste-score badge (green / yellow / red)
+- Token breakdown with API-equivalent cost
+- A per-turn token timeline — every turn rendered as a stacked bar (cache read = grey, cache create = orange, input = blue, output = green); flagged turns are ringed in red
 - All findings grouped by detector with severity badges
 
-The HTML file is fully self-contained (no external CSS/JS, no network) so you can email it, commit it, or open it offline.
+The file has no external CSS, JS, or network calls — email it, commit it, or open it offline.
 
-### 3. Sweep — rank the worst sessions across **all** your projects
+### 3. Rank the worst sessions across all your projects
 
 ```bash
-node bin/prompt-graveyard.js sweep -n 10
+prompt-graveyard sweep -n 10
 ```
 
-It scans every Claude Code session under `~/.claude/projects/` and prints a leaderboard of the worst offenders:
+Scans every Claude Code session under `~/.claude/projects/` and prints a leaderboard:
 
 ```
 💀 Prompt Graveyard — Sweep
 Worst sessions across all projects (10 shown)
-┌───┬───────┬───────┬───────────┬───────────────────────┬───────────────────────────────────┐
-│ # │ Score │ Turns │  Billable │ Project               │ Top finding                       │
-├───┼───────┼───────┼───────────┼───────────────────────┼───────────────────────────────────┤
-│ 1 │   100 │ 1,038 │ 3,195,235 │ StudioIQ-Frontend     │ Turn 1011: 318k in, 2 out         │
-│ 2 │   100 │   551 │ 1,833,304 │ web-vitals-checker    │ Cache rebuild: 217k tokens        │
-│ 3 │    70 │   102 │   691,533 │ StudioIQ-Frontend     │ Cache rebuild: 115k tokens        │
-└───┴───────┴───────┴───────────┴───────────────────────┴───────────────────────────────────┘
+┌───┬───────┬───────┬────────┬──────────┬──────────────────────────────┬──────────────────────────────────┐
+│ # │ Score │ Turns │  API $ │ Wasted $ │ Project                      │ Top finding                      │
+├───┼───────┼───────┼────────┼──────────┼──────────────────────────────┼──────────────────────────────────┤
+│ 1 │   100 │ 1,038 │   $274 │   $69.55 │ …Frontend                    │ Turn 1011: 318k in, 2 out        │
+│ 2 │   100 │   551 │   $108 │   $34.68 │ …web-vitals-checker          │ Cache rebuild: 217k tokens       │
+│ 3 │    56 │   493 │   $106 │   $19.10 │ …habit-flow                  │ Cache rebuild: 158k tokens       │
+└───┴───────┴───────┴────────┴──────────┴──────────────────────────────┴──────────────────────────────────┘
+Totals (at public API rates, not what you paid on subscription): $488 · $123 estimated waste
 ```
 
-Useful as a starting point: pick the worst row, then run the HTML report on that specific session.
-
-### Other commands
-
-```bash
-# list all sessions for a project, newest first
-node bin/prompt-graveyard.js list --cwd /path/to/your/project -n 10
-
-# analyze a specific session file directly
-node bin/prompt-graveyard.js ~/.claude/projects/-Users-you-myproject/SESSION_ID.jsonl
-
-# pipe findings to jq for filtering
-node bin/prompt-graveyard.js --cwd /path/to/your/project --json | jq '.findings[] | select(.severity == "high")'
-```
+Pick the worst row, then run the HTML report on that specific session for a deep dive.
 
 ---
 
-## Make it convenient
-
-Typing `node /full/path/to/bin/prompt-graveyard.js` every time is tedious. Pick one:
-
-### Option A: `npm link` (recommended)
-
-Run this once from inside the repo:
+## All commands
 
 ```bash
-npm link
+# Analyze the latest session for the current directory's project
+prompt-graveyard
+
+# Analyze the latest session for an arbitrary project directory
+prompt-graveyard --cwd /path/to/your/project
+
+# Analyze a specific session file directly
+prompt-graveyard ~/.claude/projects/-Users-you-myproject/SESSION_ID.jsonl
+
+# HTML report
+prompt-graveyard --cwd /path/to/your/project --html ./report.html
+
+# Sweep — leaderboard across all projects
+prompt-graveyard sweep -n 20 --min-turns 5
+
+# List recent sessions for a project (newest first)
+prompt-graveyard list --cwd /path/to/your/project -n 10
+
+# JSON output, pipe to jq for filtering
+prompt-graveyard --cwd /path/to/your/project --json | jq '.findings[] | select(.severity == "high")'
 ```
 
-Now `prompt-graveyard` works as a global command from anywhere:
-
-```bash
-cd /path/to/any/project
-prompt-graveyard                       # latest session
-prompt-graveyard --html report.html    # HTML report
-prompt-graveyard sweep                 # leaderboard across all projects
-prompt-graveyard list                  # this project's sessions
-```
-
-You may be asked for your Mac password the first time — that's normal (npm needs to write a symlink into `/usr/local/bin`).
-
-### Option B: shell alias
-
-If `npm link` gives you trouble, add this line to `~/.zshrc` (or `~/.bashrc`):
-
-```bash
-alias pg='node /absolute/path/to/prompt-graveyard/bin/prompt-graveyard.js'
-```
-
-Then `source ~/.zshrc` (or restart the terminal). Now:
-
-```bash
-pg sweep
-pg --html report.html
-pg list
-```
-
----
-
-## After making code changes
-
-Whenever you edit anything under `src/`, re-run the build before testing:
-
-```bash
-npm run build
-```
-
-Or run it in watch mode in a separate terminal:
-
-```bash
-npm run dev
-```
-
-This watches `src/` and rebuilds automatically on every save.
+Run `prompt-graveyard --help` for the full flag list.
 
 ---
 
 ## What it detects
 
-
 | Detector          | What it flags                                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `duplicate-reads` | Same file Read across multiple turns. After the first read it sits in conversation; re-reads bloat context.                   |
-| `duplicate-bash`  | Identical Bash command run more than once.                                                                                    |
-| `token-spike`     | A turn that wrote ≥20k cache_creation tokens — the prefix changed enough to invalidate the cache. Frequent rebuilds compound. |
-| `low-output-turn` | Heavy context loaded, almost no output, no tool calls. Often unclear prompts.                                                 |
+| `duplicate-reads` | Same file `Read` across multiple turns. After the first read the file content sits in conversation; re-reads bloat context.  |
+| `duplicate-bash`  | Identical `Bash` command run more than once.                                                                                  |
+| `token-spike`     | A turn that wrote ≥20k cache-creation tokens — the prefix changed enough to invalidate the cache. Frequent rebuilds compound. |
+| `low-output-turn` | Heavy context loaded, almost no output, no tool calls. Often a sign of an unclear prompt or premature thinking.               |
 | `ghost-read`      | Tool result was sizeable but its distinctive content barely surfaced in later turns. Likely loaded but unused.                |
-
 
 ---
 
 ## Cost estimation
 
-> **Heads up.** The dollar figures are **API-equivalent cost** — what the session would have cost on Anthropic's public pay-as-you-go API. If you're on a Claude Code **Pro / Max subscription**, your actual out-of-pocket is the flat monthly fee; the subscription absorbs all of this. So a $69 "wasted" number does **not** mean you were charged $69 — it means an equivalent API run would have, and a session that big is eating into your subscription's rate-limit allowance.
+> **About the dollar figures.** They're **API-equivalent cost** — what the session would have cost on Anthropic's public pay-as-you-go API. If you're on a Claude Code Pro or Max subscription, your actual out-of-pocket is the flat monthly fee; the subscription absorbs all of this. A `$69 wasted` number does **not** mean you were charged $69 — it means the equivalent API run would have, and a session that wasteful is eating into your subscription's rate-limit allowance.
 
-Each session is priced against Anthropic's public per-model rates (Opus / Sonnet / Haiku, with cache-write at 1.25× input and cache-read at 0.1× input). The model is read straight from the transcript, so a session that mixed Opus + Sonnet costs the right thing for each turn.
+Each session is priced against Anthropic's published per-model rates (Opus, Sonnet, Haiku), with cache-write at 1.25× input and cache-read at 0.1× input. The model is read straight from the transcript, so a session that mixed Opus and Sonnet is priced correctly per turn.
 
-The `~$X likely wasted` figure under the waste score is an estimate: each finding's `wastedTokens` priced at the relevant turn's cache-write rate (most waste is cache rebuild). It's a lower-bound for napkin math, not an invoice.
+The `~$X likely wasted` figure under the waste score is an estimate: each finding's `wastedTokens` priced at the relevant turn's cache-write rate (most waste is cache rebuild). Treat it as a lower-bound for napkin math, not an invoice.
 
 ---
 
 ## Waste score
 
-A 0–100 number: `wasted tokens / billable tokens`, where billable = `input + cache_creation + output` (cache reads are excluded since they're ~10× cheaper).
+A 0–100 number computed as `wasted tokens / billable tokens`, where `billable = input + cache_creation + output`. Cache reads are excluded since they're roughly 10× cheaper.
 
-- **0–14** — clean session
-- **15–29** — some waste, worth a glance
-- **30–69** — meaningful waste
-- **70–100** — investigate this session
-
----
-
-## Example output
-
-```
-💀 Prompt Graveyard
-────────────────────────────────────────────────────────────
-Session    dc4a736d-0d40-430f-8f7e-09395d44c983
-Project    /Users/me/Documents/some-project
-Branch     main
-Turns      493
-Started    2026-04-26T13:27:28.752Z
-
-┌──────────────────┬────────────┐
-│ Token type       │      Count │
-├──────────────────┼────────────┤
-│ Input (uncached) │     16,530 │
-│ Cache creation   │  1,461,531 │
-│ Cache read       │ 35,600,404 │
-│ Output           │    337,775 │
-│ Total            │ 37,416,240 │
-└──────────────────┴────────────┘
-
-Est. cost  $106.34  (based on Anthropic public pricing)
-Waste score 56/100  ~$19.10 likely wasted
-
-▸ duplicate-reads  (2)
-  [HIGH] Read 3× redundantly: /Users/me/.../components/HabitCard.tsx
-
-▸ duplicate-bash  (4)
-  [HIGH] Bash repeated 4×: npm run test:run 2>&1 | tail -10
-  [HIGH] Bash repeated 3×: npx tsc --noEmit 2>&1; echo "exit: $?"
-
-▸ token-spike  (12)
-  [HIGH] Cache rebuild on turn 228: 102,934 tokens written
-
-▸ ghost-read  (17)
-  [WARN] Ghost read on turn 5: Read .../WORKFLOW.md
-         11,909 bytes loaded, 7% match rate in later turns.
-```
+| Score   | Meaning                          |
+| ------- | -------------------------------- |
+| 0–14    | Clean session                    |
+| 15–29   | Some waste, worth a glance       |
+| 30–69   | Meaningful waste                 |
+| 70–100  | Investigate this session         |
 
 ---
 
@@ -281,16 +216,36 @@ Waste score 56/100  ~$19.10 likely wasted
 
 Everything runs locally. Your transcripts never leave your machine. There are zero network calls.
 
-You can verify this yourself: `grep -RE '(fetch|http|axios|got)\b' src/` — only the `WebFetch` and `URL` tokens that appear are inside string detectors that match against tool names in your transcripts (not actual network calls).
+You can verify this yourself:
+
+```bash
+grep -RE '(fetch|http|axios|got)\b' src/
+```
+
+The only matches are inside string detectors that look for tool names like `WebFetch` in your transcripts — not actual network calls.
+
+---
+
+## Development
+
+```bash
+git clone https://github.com/Aleezah1429/prompt-graveyard
+cd prompt-graveyard
+npm install
+npm run build      # one-shot compile
+npm run dev        # watch mode
+```
+
+Compiled output goes to `dist/`. The CLI entry point is `bin/prompt-graveyard.js`, which loads `dist/cli.js`.
 
 ---
 
 ## Contributing
 
-Issues and PRs welcome. If you have a Claude Code session that produced a strange waste pattern Prompt Graveyard didn't catch, **please open an issue** with the (sanitized) finding — that's the most valuable contribution right now.
+Issues and PRs welcome. If you have a Claude Code session that produced a waste pattern Prompt Graveyard didn't catch, please open an issue with the (sanitized) finding — that's the most valuable contribution right now.
 
 ---
 
 ## License
 
-MIT
+[MIT](./LICENSE)
