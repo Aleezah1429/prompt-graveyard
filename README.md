@@ -12,7 +12,6 @@ Token trackers tell you *how much* you spent. Prompt Graveyard tells you *what w
 
 ---
 
-
 ## How it works (in one picture)
 
 ```
@@ -122,8 +121,6 @@ Waste score 25/100  ~$3.14 of API-equivalent cost likely wasted
   ...
 ```
 
-![Terminal report](./assets/terminal.png)
-
 Sessions with detected waste show findings grouped by detector (`duplicate-reads`, `duplicate-bash`, `ghost-read`, `token-spike`, `low-output-turn`, `thrash-loop`, `stale-CLAUDE-md`).
 
 ### 2. Generate an HTML report
@@ -132,8 +129,6 @@ Sessions with detected waste show findings grouped by detector (`duplicate-reads
 prompt-graveyard --cwd /path/to/your/project --html ./report.html
 open ./report.html
 ```
-
-![HTML dashboard](./assets/html-report.png)
 
 The HTML report is a self-contained, dark-themed dashboard:
 
@@ -164,8 +159,6 @@ Worst sessions across all projects (10 shown)
 └───┴───────┴───────┴────────┴──────────┴──────────────────────────────┴──────────────────────────────────┘
 Totals (at public API rates, not what you paid on subscription): $488 · $123 estimated waste
 ```
-
-![Sweep leaderboard](./assets/sweep.png)
 
 Pick the worst row, then run the HTML report on that specific session for a deep dive.
 
@@ -264,6 +257,8 @@ prompt-graveyard --cwd /path/to/your/project --md ./pg-report.md
 prompt-graveyard --cwd /path/to/your/project --md /dev/stdout | pbcopy
 ```
 
+![Markdown report](./assets/markdown.png)
+
 The report contains the same information as the HTML dashboard: session metadata, token breakdown, API-equivalent cost, waste score, estimated wasted spend, and every finding grouped by detector with severity, detail, and the turns it affected.
 
 **When to use which output format:**
@@ -353,6 +348,8 @@ Most "how to write a good CLAUDE.md" advice is generic. `pg suggest` is specific
 ```bash
 prompt-graveyard suggest --md > improvements.md
 ```
+
+![CLAUDE.md improvement suggestions](./assets/suggestion.png)
 
 You get suggestions like:
 - *"5 files were re-read multiple times — paste these paths into a 'Key files' section in CLAUDE.md."*
