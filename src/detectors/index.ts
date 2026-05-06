@@ -3,6 +3,8 @@ import { detectDuplicateReads } from "./duplicateReads.js";
 import { detectDuplicateBash } from "./duplicateBash.js";
 import { detectTokenSpikes, detectLowOutputTurns } from "./tokenSpikes.js";
 import { detectGhostReads } from "./ghostReads.js";
+import { detectThrashLoop } from "./thrashLoop.js";
+import { detectStaleClaudeMd } from "./staleClaudeMd.js";
 import { pricingForModel, costForTokens } from "../pricing.js";
 
 export function analyze(session: Session): Report {
@@ -12,6 +14,8 @@ export function analyze(session: Session): Report {
     ...detectTokenSpikes(session),
     ...detectLowOutputTurns(session),
     ...detectGhostReads(session),
+    ...detectThrashLoop(session),
+    ...detectStaleClaudeMd(session),
   ];
 
   const wastedTotal = findings.reduce((s, f) => s + (f.wastedTokens ?? 0), 0);
