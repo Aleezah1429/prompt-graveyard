@@ -12,7 +12,6 @@ Token trackers tell you *how much* you spent. Prompt Graveyard tells you *what w
 
 ---
 
-![HTML report dashboard](./assets/html-report.png)
 
 ## How it works (in one picture)
 
