@@ -137,3 +137,6 @@ dist
 
 # Personal notes
 ROADMAP.md
+
+# Local screenshots / demo assets (not shipped to npm or public repo)
+assets/

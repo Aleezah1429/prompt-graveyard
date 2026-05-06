@@ -235,8 +235,6 @@ When the report flags a turn, you usually want to know *exactly* what happened o
 prompt-graveyard explain 47
 ```
 
-![Explain a turn](./assets/explain.png)
-
 You get the model used, token breakdown, cost for that one turn, the message text, the thinking block, every tool call with its result, and the verdict from any detectors that flagged it.
 
 ---
@@ -256,8 +254,6 @@ prompt-graveyard --cwd /path/to/your/project --md ./pg-report.md
 # Pipe straight to clipboard (macOS) — paste directly into a PR description
 prompt-graveyard --cwd /path/to/your/project --md /dev/stdout | pbcopy
 ```
-
-![Markdown report](./assets/markdown.png)
 
 The report contains the same information as the HTML dashboard: session metadata, token breakdown, API-equivalent cost, waste score, estimated wasted spend, and every finding grouped by detector with severity, detail, and the turns it affected.
 
@@ -291,8 +287,6 @@ You tweaked your CLAUDE.md or your prompt style, and you want to see if it actua
 ```bash
 prompt-graveyard diff before.jsonl after.jsonl
 ```
-
-![Diff two sessions](./assets/diff-table.png)
 
 You see a side-by-side table for both sessions: token counts, cost, waste score, detector counts, and a Δ column with absolute and percentage change. Color-coded — green if "after" is better, red if it got worse. No more guessing whether your tweaks helped.
 
@@ -348,8 +342,6 @@ Most "how to write a good CLAUDE.md" advice is generic. `pg suggest` is specific
 ```bash
 prompt-graveyard suggest --md > improvements.md
 ```
-
-![CLAUDE.md improvement suggestions](./assets/suggestion.png)
 
 You get suggestions like:
 - *"5 files were re-read multiple times — paste these paths into a 'Key files' section in CLAUDE.md."*
