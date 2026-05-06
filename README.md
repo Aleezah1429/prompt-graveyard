@@ -276,7 +276,17 @@ The report contains the same information as the HTML dashboard: session metadata
 | Pipe into `jq`, dashboards, scripts, or your own tooling              | `--json`        |
 | Quick read in the terminal                                            | (no flag)       |
 
-> **Tip — previewing the Markdown locally.** Most editors render Markdown with one keystroke: in VS Code, open the file and press `Cmd + Shift + V`. Or paste the contents into any browser-based preview such as a private GitHub Gist.
+**Previewing the Markdown locally.** A `.md` file is plain text, so you need a viewer to see it rendered. Easiest options:
+
+```bash
+# macOS — opens with whichever app is registered for .md files
+# (Cursor / VS Code / Typora etc. will render it side-by-side)
+open ./pg-report.md
+
+# In an editor that's already open, press Cmd + Shift + V to toggle preview
+```
+
+If your default `.md` app is plain TextEdit, install [Cursor](https://cursor.sh) or [VS Code](https://code.visualstudio.com/) and set it as the default — both render Markdown with `Cmd + Shift + V`. Or paste the contents into a [private GitHub Gist](https://gist.github.com/) for an authentic GitHub render.
 
 ---
 
